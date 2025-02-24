@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using WebApiForum.Dto_s;
 using WebApiForum.Models;
 
 namespace WebApiForum.Controllers
@@ -54,23 +55,42 @@ namespace WebApiForum.Controllers
 
         // POST: api/Likes
         [HttpPost]
-        public async Task<ActionResult<Like>> PostLike(Like like)
+        public async Task<ActionResult<Like>> PostLike(CreateLikeDto dto)
         {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
             // Vérifier si la réponse existe
-            var reponseExists = await _context.Reponses.AnyAsync(r => r.Id == like.ReponseId);
+            var reponseExists = await _context.Reponses.AnyAsync(r => r.Id == dto.ReponseId);
             if (!reponseExists)
             {
-                return BadRequest($"La réponse avec l'ID {like.ReponseId} n'existe pas.");
+                return BadRequest($"La réponse avec l'ID {dto.ReponseId} n'existe pas.");
+            }
+
+            // Vérifier si l'utilisateur existe
+            var userExists = await _context.Users.AnyAsync(u => u.Id == dto.UserId);
+            if (!userExists)
+            {
+                return BadRequest($"L'utilisateur avec l'ID {dto.UserId} n'existe pas.");
             }
 
             // Vérifier si l'utilisateur a déjà liké cette réponse
             var existingLike = await _context.Likes
-                .FirstOrDefaultAsync(l => l.ReponseId == like.ReponseId && l.UserId == like.UserId);
+                .FirstOrDefaultAsync(l => l.ReponseId == dto.ReponseId && l.UserId == dto.UserId);
 
             if (existingLike != null)
             {
                 return Conflict("Vous avez déjà liké cette réponse.");
             }
+
+            // Créer le nouveau like
+            var like = new Like
+            {
+                ReponseId = dto.ReponseId,
+                UserId = dto.UserId
+            };
 
             _context.Likes.Add(like);
             await _context.SaveChangesAsync();
@@ -96,7 +116,7 @@ namespace WebApiForum.Controllers
 
         // DELETE: api/Likes/user/{userId}/reponse/{reponseId}
         [HttpDelete("user/{userId}/reponse/{reponseId}")]
-        public async Task<IActionResult> DeleteLikeByUserAndReponse(string userId, int reponseId)
+        public async Task<IActionResult> DeleteLikeByUserAndReponse(int userId, int reponseId)
         {
             var like = await _context.Likes
                 .FirstOrDefaultAsync(l => l.UserId == userId && l.ReponseId == reponseId);

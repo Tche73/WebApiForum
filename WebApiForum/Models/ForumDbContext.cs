@@ -12,6 +12,7 @@ namespace WebApiForum.Models
         public DbSet<Message> Messages { get; set; }
         public DbSet<Reponse> Reponses { get; set; }
         public DbSet<Like> Likes { get; set; }
+        public DbSet<User> Users { get; set; }  
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -31,6 +32,29 @@ namespace WebApiForum.Models
                 .WithOne(l => l.Reponse)
                 .HasForeignKey(l => l.ReponseId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // Configuration Like-Users
+            modelBuilder.Entity<User>()
+                .HasMany(u => u.Likes)
+                .WithOne(l => l.User)
+                .HasForeignKey(l => l.UserId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            // Configuration User-Messages
+            modelBuilder.Entity<User>()
+                .HasMany(u => u.Messages)
+                .WithOne(m => m.User)
+                .HasForeignKey(m => m.UserId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            // Configuration User-Reponses
+            modelBuilder.Entity<User>()
+                .HasMany(u => u.Reponses)
+                .WithOne(r => r.User)
+                .HasForeignKey(r => r.UserId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.NoAction);
 
             // Index pour améliorer les performances
             modelBuilder.Entity<Reponse>()
@@ -52,6 +76,7 @@ namespace WebApiForum.Models
             modelBuilder.Entity<Reponse>()
                 .Property(r => r.DatePublication)
                 .HasDefaultValueSql("GETDATE()");
+
         }
     }
 }

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using WebApiForum.Dto_s;
 using WebApiForum.Models;
 
 namespace WebApiForum.Controllers
@@ -47,14 +48,28 @@ namespace WebApiForum.Controllers
         }
 
         // POST: api/Messages
+        // POST: api/Messages
         [HttpPost]
-        [IgnoreAntiforgeryToken]
-        public async Task<ActionResult<Message>> PostMessage(Message message)
+        public async Task<ActionResult<Message>> PostMessage(CreateMessageDto dto)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
+
+            // Vérifiez que l'utilisateur existe
+            var userExists = await _context.Users.AnyAsync(u => u.Id == dto.UserId);
+            if (!userExists)
+            {
+                return BadRequest($"L'utilisateur avec l'ID {dto.UserId} n'existe pas.");
+            }
+
+            var message = new Message
+            {
+                Contenu = dto.Contenu,
+                DatePublication = DateTime.Now,
+                UserId = dto.UserId  
+            };
 
             _context.Messages.Add(message);
             await _context.SaveChangesAsync();
@@ -64,12 +79,9 @@ namespace WebApiForum.Controllers
 
         // PUT: api/Messages/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutMessage(int id, Message message)
+        public async Task<IActionResult> PutMessage(int id, UpdateMessageDto dto)
         {
-            if (id != message.Id)
-            {
-                return BadRequest("L'ID du message ne correspond pas.");
-            }
+          
 
             if (!ModelState.IsValid)
             {
@@ -85,7 +97,8 @@ namespace WebApiForum.Controllers
                 }
 
                 // Mise à jour uniquement des propriétés modifiables
-                existingMessage.Contenu = message.Contenu;
+                existingMessage.Contenu = dto.Contenu;
+                existingMessage.DatePublication = DateTime.Now;
                 // Vous pouvez ajouter d'autres propriétés modifiables ici
 
                 await _context.SaveChangesAsync();
@@ -118,21 +131,21 @@ namespace WebApiForum.Controllers
             return NoContent();
         }
 
-        // GET: api/Messages/5/reponses
-        [HttpGet("{id}/reponses")]
-        public async Task<ActionResult<IEnumerable<Reponse>>> GetMessageReponses(int id)
-        {
-            if (!MessageExists(id))
-            {
-                return NotFound($"Le message avec l'ID {id} n'existe pas.");
-            }
+        //// GET: api/Messages/5/reponses
+        //[HttpGet("{id}/reponses")]
+        //public async Task<ActionResult<IEnumerable<Reponse>>> GetMessageReponses(int id)
+        //{
+        //    if (!MessageExists(id))
+        //    {
+        //        return NotFound($"Le message avec l'ID {id} n'existe pas.");
+        //    }
 
-            return await _context.Reponses
-                .Where(r => r.MessageId == id)
-                .Include(r => r.Likes)
-                .OrderBy(r => r.DatePublication)
-                .ToListAsync();
-        }
+        //    return await _context.Reponses
+        //        .Where(r => r.MessageId == id)
+        //        .Include(r => r.Likes)
+        //        .OrderBy(r => r.DatePublication)
+        //        .ToListAsync();
+        //}
 
         private bool MessageExists(int id)
         {
