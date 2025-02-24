@@ -48,6 +48,7 @@ namespace WebApiForum.Controllers
 
         // POST: api/Messages
         [HttpPost]
+        [IgnoreAntiforgeryToken]
         public async Task<ActionResult<Message>> PostMessage(Message message)
         {
             if (!ModelState.IsValid)
