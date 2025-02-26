@@ -95,6 +95,12 @@ namespace WebApiForum.Controllers
             _context.Likes.Add(like);
             await _context.SaveChangesAsync();
 
+            // Recharger le like avec ses relations
+            var likeWithRelations = await _context.Likes
+                .Include(l => l.Reponse)
+                .Include(l => l.User)
+                .FirstOrDefaultAsync(l => l.Id == like.Id);
+
             return CreatedAtAction(nameof(GetLike), new { id = like.Id }, like);
         }
 

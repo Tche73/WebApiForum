@@ -80,17 +80,25 @@ namespace WebApiForum.Controllers
                 return BadRequest($"Le message parent avec l'ID {dto.MessageId} n'existe pas.");
             }
 
+            // Vérifier si l'utilisateur existe
+            var userExists = await _context.Users.AnyAsync(u => u.Id == dto.UserId);
+            if (!userExists)
+            {
+                return BadRequest($"L'utilisateur avec l'ID {dto.UserId} n'existe pas.");
+            }
+
             Reponse reponse = new Reponse
             {
                 Contenu = dto.Contenu,
                 DatePublication = DateTime.Now,
                 MessageId = dto.MessageId,
+                UserId = dto.UserId,
             };
 
             _context.Reponses.Add(reponse);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetReponse), new { id = reponse.Id }, dto);
+            return CreatedAtAction(nameof(GetReponse), new { id = reponse.Id }, reponse);
         }
 
         // PUT: api/Reponses/5

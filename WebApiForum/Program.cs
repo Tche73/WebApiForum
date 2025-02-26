@@ -6,6 +6,14 @@ using System.Text.Json.Serialization;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowBlazor",
+        policy => policy
+            .AllowAnyOrigin()  // En développement, vous pouvez autoriser toutes les origines
+            .AllowAnyMethod()
+            .AllowAnyHeader());
+});
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -27,6 +35,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors("AllowBlazor");
 
 app.UseAuthorization();
 
