@@ -6,25 +6,26 @@ using System.Text.Json.Serialization;
 
 namespace WebApiForum.Models
 {
+    [Table("Messages")]
     public class Message
     {
-        [Key]  // Définit la clé primaire
+        [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
 
-        [Required]  // Champ obligatoire
-        [StringLength(500)]  // Longueur maximale du message
+        [Required(ErrorMessage = "Le contenu est obligatoire")]
+        [StringLength(500, MinimumLength = 1, ErrorMessage = "Le contenu doit avoir entre 1 et 500 caractères")]
         public string Contenu { get; set; }
 
-        [Required]
+        [Required(ErrorMessage = "La date de publication est obligatoire")]
+        [DataType(DataType.DateTime)]
         public DateTime DatePublication { get; set; } = DateTime.Now;
 
-        [Required]
-        public int? UserId { get; set; }
+        [Required(ErrorMessage = "L'utilisateur est obligatoire")]
+        public int UserId { get; set; }
 
-        [JsonIgnore]
-        public virtual User User { get; set; }
-
-        // Relation avec les réponses (1 message peut avoir plusieurs réponses)
-        public virtual ICollection<Reponse> Reponses { get; set; } = new List<Reponse>();
+        // Navigation properties
+        public User User { get; set; }
+        public ICollection<Reponse> Reponses { get; set; } = new List<Reponse>();
     }
 }

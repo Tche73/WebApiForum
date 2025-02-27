@@ -167,18 +167,23 @@ namespace WebApiForum.Controllers
         //        .OrderBy(r => r.DatePublication)
         //        .ToListAsync();
         //}
+        // GET: api/Reponses/5/Likes
+        [HttpGet("{id}/Likes")]
+        public async Task<ActionResult<IEnumerable<Like>>> GetLikesForReponse(int id)
+        {
+            var reponse = await _context.Reponses.FindAsync(id);
+            if (reponse == null)
+            {
+                return NotFound();
+            }
 
-        //// GET: api/Reponses/5/likes/count
-        //[HttpGet("{id}/likes/count")]
-        //public async Task<ActionResult<int>> GetLikesCount(int id)
-        //{
-        //    if (!(await ReponseExists(id)))  // Correction ici
-        //    {
-        //        return NotFound($"La réponse avec l'ID {id} n'existe pas.");
-        //    }
+            var likes = await _context.Likes
+                .Where(l => l.ReponseId == id)
+                .Include(l => l.User)
+                .ToListAsync();
 
-        //    return await _context.Likes.CountAsync(l => l.ReponseId == id);
-        //}
+            return likes;
+        }
 
         private async Task<bool> ReponseExists(int id)
         {

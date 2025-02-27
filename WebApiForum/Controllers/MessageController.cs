@@ -1,9 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using WebApiForum.Dto_s;
 using WebApiForum.Models;
 
@@ -24,10 +20,15 @@ namespace WebApiForum.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Message>>> GetMessages()
         {
-            return await _context.Messages
+            // Chargez les messages avec les relations nécessaires
+            var messages = await _context.Messages
+                .Include(m => m.User) // Ajoutez les includes nécessaires
                 .Include(m => m.Reponses)
-                .OrderByDescending(m => m.DatePublication)
+                    .ThenInclude(r => r.User)
+                    .OrderByDescending(m => m.DatePublication)   
                 .ToListAsync();
+
+            return Ok(messages);
         }
 
         // GET: api/Messages/5
@@ -131,21 +132,24 @@ namespace WebApiForum.Controllers
             return NoContent();
         }
 
-        //// GET: api/Messages/5/reponses
-        //[HttpGet("{id}/reponses")]
-        //public async Task<ActionResult<IEnumerable<Reponse>>> GetMessageReponses(int id)
-        //{
-        //    if (!MessageExists(id))
-        //    {
-        //        return NotFound($"Le message avec l'ID {id} n'existe pas.");
-        //    }
+        // GET: api/Messages/5/reponses
+        [HttpGet("{id}/Reponses")]
+        public async Task<ActionResult<IEnumerable<Reponse>>> GetMessageReponses(int id)
+        {
+            if (!MessageExists(id))
+            {
+                return NotFound($"Le message avec l'ID {id} n'existe pas.");
+            }
 
-        //    return await _context.Reponses
-        //        .Where(r => r.MessageId == id)
-        //        .Include(r => r.Likes)
-        //        .OrderBy(r => r.DatePublication)
-        //        .ToListAsync();
-        //}
+            var reponses =  await _context.Reponses
+                .Where(r => r.MessageId == id)
+                .Include(r => r.User)
+                .Include(r => r.Likes)
+                .OrderBy(r => r.DatePublication)
+                .ToListAsync();
+
+            return reponses;
+        }
 
         private bool MessageExists(int id)
         {
