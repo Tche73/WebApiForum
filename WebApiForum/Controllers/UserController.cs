@@ -1,8 +1,10 @@
 ﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebApiForum.Dto_s;
 using WebApiForum.Dto_s.Details;
+using WebApiForum.Dto_s.Update;
 using WebApiForum.Models;
 
 namespace WebApiForum.Controllers
@@ -11,9 +13,11 @@ namespace WebApiForum.Controllers
     [ApiController]
     public class UserController : ControllerBase
     {
+        private readonly UserManager<User> _userManager;
         private readonly ForumDbContext _context;
-        public UserController(ForumDbContext context)
+        public UserController(UserManager<User> userManager, ForumDbContext context)
         {
+            _userManager = userManager;
             _context = context;
         }
 
@@ -21,20 +25,22 @@ namespace WebApiForum.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<UserDetailsDto>>> GetUsers()
         {
-            return await _context.Users
+            var users = await _userManager.Users
                 .Select(u => new UserDetailsDto
-                {                  
-                    Username = u.Username,
+                {
+                    Username = u.UserName,
                     Email = u.Email
                 })
                 .ToListAsync();
+
+            return Ok(users);
         }
 
         // GET: api/Users/5
         [HttpGet("{id}")]
         public async Task<ActionResult<UserDetailsDto>> GetUser(int id)
         {
-            var user = await _context.Users.FindAsync(id);
+            var user = await _userManager.FindByIdAsync(id.ToString());
 
             if (user == null)
             {
@@ -43,58 +49,12 @@ namespace WebApiForum.Controllers
 
             return new UserDetailsDto
             {
-                Username = user.Username,
+                Username = user.UserName,
                 Email = user.Email
             };
         }
 
-        //// GET: api/Users/5/messages
-        //[HttpGet("{id}/messages")]
-        //public async Task<ActionResult<IEnumerable<UserDetailsDto>>> GetUserMessages(int id)
-        //{
-        //    var userExists = await _context.Users.AnyAsync(u => u.Id == id);
-        //    if (!userExists)
-        //    {
-        //        return NotFound($"L'utilisateur avec l'ID {id} n'existe pas.");
-        //    }
 
-        //    return await _context.Messages
-        //        .Where(m => m.UserId == id)
-        //        .OrderByDescending(m => m.DatePublication)
-        //        .Select(m => new UserDetailsDto
-        //        {
-        //            Id = m.Id,
-        //            Contenu = m.Contenu,
-        //            DatePublication = m.DatePublication,
-        //            NombreReponses = m.Reponses.Count
-        //        })
-        //        .ToListAsync();
-        //}
-
-        //// GET: api/Users/5/reponses
-        //[HttpGet("{id}/reponses")]
-        //public async Task<ActionResult<IEnumerable<ReponseDto>>> GetUserReponses(int id)
-        //{
-        //    var userExists = await _context.Users.AnyAsync(u => u.Id == id);
-        //    if (!userExists)
-        //    {
-        //        return NotFound($"L'utilisateur avec l'ID {id} n'existe pas.");
-        //    }
-
-        //    return await _context.Reponses
-        //        .Where(r => r.UserId == id)
-        //        .OrderByDescending(r => r.DatePublication)
-        //        .Select(r => new ReponseDto
-        //        {
-        //            Id = r.Id,
-        //            Contenu = r.Contenu,
-        //            DatePublication = r.DatePublication,
-        //            MessageId = r.MessageId,
-        //            MessageContenu = r.Message.Contenu,
-        //            NombreLikes = r.Likes.Count
-        //        })
-        //        .ToListAsync();
-        //}
 
         // POST: api/Users
         [HttpPost]
@@ -106,103 +66,94 @@ namespace WebApiForum.Controllers
             }
 
             // Vérifier si l'email est déjà utilisé
-            var emailExists = await _context.Users.AnyAsync(u => u.Email == dto.Email);
-            if (emailExists)
+            var existingUserByEmail = await _userManager.FindByEmailAsync(dto.Email);
+            if (existingUserByEmail != null)
             {
                 return Conflict($"L'email {dto.Email} est déjà utilisé.");
             }
 
             // Vérifier si le nom d'utilisateur est déjà utilisé
-            var usernameExists = await _context.Users.AnyAsync(u => u.Username == dto.Username);
-            if (usernameExists)
+            var existingUserByUsername = await _userManager.FindByNameAsync(dto.Username);
+            if (existingUserByUsername != null)
             {
                 return Conflict($"Le nom d'utilisateur {dto.Username} est déjà utilisé.");
             }
 
             var user = new User
             {
-                Username = dto.Username,
+                UserName = dto.Username,
                 Email = dto.Email
             };
 
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
+            // Utiliser CreateAsync pour gérer la création sécurisée de l'utilisateur
+            var result = await _userManager.CreateAsync(user);
 
-            return CreatedAtAction(nameof(GetUser), new { id = user.Id }, new User
+            if (result.Succeeded)
             {
-                Id = user.Id,
-                Username = user.Username,
-                Email = user.Email
-            });
+                var userDetails = new UserDetailsDto
+                {
+                    Username = user.UserName,
+                    Email = user.Email
+                };
+
+                return CreatedAtAction(nameof(GetUser), new { id = user.Id }, userDetails);
+            }
+
+            // Gérer les erreurs de création
+            return BadRequest(result.Errors);
         }
 
-        //// PUT: api/Users/5
-        //[HttpPut("{id}")]
-        //public async Task<IActionResult> PutUser(int id, UpdateUserDto dto)
-        //{
-        //    if (!ModelState.IsValid)
-        //    {
-        //        return BadRequest(ModelState);
-        //    }
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateUser(int id, UpdateUserDto dto)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
 
-        //    var user = await _context.Users.FindAsync(id);
-        //    if (user == null)
-        //    {
-        //        return NotFound($"L'utilisateur avec l'ID {id} n'existe pas.");
-        //    }
+            try
+            {
+                var existingUser = await _context.Users.FindAsync(id);
+                if (existingUser == null)
+                {
+                    return NotFound($"L'utilisateur avec l'ID {id} n'existe pas.");
+                }
 
-        //    // Vérifier si le nouveau email est déjà utilisé par un autre utilisateur
-        //    if (!string.IsNullOrEmpty(dto.Email) && dto.Email != user.Email)
-        //    {
-        //        var emailExists = await _context.Users.AnyAsync(u => u.Email == dto.Email && u.Id != id);
-        //        if (emailExists)
-        //        {
-        //            return Conflict($"L'email {dto.Email} est déjà utilisé.");
-        //        }
-        //        user.Email = dto.Email;
-        //    }
+                // Mise à jour uniquement des propriétés modifiables
+                existingUser.UserName = dto.UserName;
+                existingUser.Displayname = dto.DisplayName;
+                // Vous pouvez ajouter d'autres propriétés modifiables ici
 
-        //    // Vérifier si le nouveau nom d'utilisateur est déjà utilisé par un autre utilisateur
-        //    if (!string.IsNullOrEmpty(dto.Username) && dto.Username != user.Username)
-        //    {
-        //        var usernameExists = await _context.Users.AnyAsync(u => u.Username == dto.Username && u.Id != id);
-        //        if (usernameExists)
-        //        {
-        //            return Conflict($"Le nom d'utilisateur {dto.Username} est déjà utilisé.");
-        //        }
-        //        user.Username = dto.Username;
-        //    }
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!UserExists(id))
+                {
+                    return NotFound();
+                }
+                throw;
+            }
 
-        //    try
-        //    {
-        //        await _context.SaveChangesAsync();
-        //    }
-        //    catch (DbUpdateConcurrencyException)
-        //    {
-        //        if (!UserExists(id))
-        //        {
-        //            return NotFound();
-        //        }
-        //        throw;
-        //    }
+            return NoContent();
+        }
 
-        //    return NoContent();
-        //}
 
-        // DELETE: api/Users/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteUser(int id)
         {
-            var user = await _context.Users.FindAsync(id);
+            var user = await _userManager.FindByIdAsync(id.ToString());
             if (user == null)
             {
                 return NotFound($"L'utilisateur avec l'ID {id} n'existe pas.");
             }
+            var result = await _userManager.DeleteAsync(user);
+            if (!result.Succeeded)
+            {
+                return NoContent();
+            }
+            return BadRequest(result.Errors);
 
-            _context.Users.Remove(user);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
         }
 
         private bool UserExists(int id)

@@ -1,9 +1,11 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using System;
 
 namespace WebApiForum.Models
 {
-    public class ForumDbContext : DbContext
+    public class ForumDbContext : IdentityDbContext<User, IdentityRole<int>,int>
     {
         public ForumDbContext(DbContextOptions<ForumDbContext> options) : base(options)
         {
@@ -12,10 +14,12 @@ namespace WebApiForum.Models
         public DbSet<Message> Messages { get; set; }
         public DbSet<Reponse> Reponses { get; set; }
         public DbSet<Like> Likes { get; set; }
-        public DbSet<User> Users { get; set; }  
+      
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            base.OnModelCreating(modelBuilder);
+
             if (modelBuilder == null)
                 throw new ArgumentNullException(nameof(modelBuilder));
 
@@ -76,6 +80,14 @@ namespace WebApiForum.Models
             modelBuilder.Entity<Reponse>()
                 .Property(r => r.DatePublication)
                 .HasDefaultValueSql("GETDATE()");
+
+            modelBuilder.Entity<User>().ToTable("Users");
+            modelBuilder.Entity<IdentityRole<int>>().ToTable("Roles");
+            modelBuilder.Entity<IdentityUserRole<int>>().ToTable("UserRoles");
+            modelBuilder.Entity<IdentityUserClaim<int>>().ToTable("UserClaims");
+            modelBuilder.Entity<IdentityUserLogin<int>>().ToTable("UserLogins");
+            modelBuilder.Entity<IdentityRoleClaim<int>>().ToTable("RoleClaims");
+            modelBuilder.Entity<IdentityUserToken<int>>().ToTable("UserTokens");
 
         }
     }

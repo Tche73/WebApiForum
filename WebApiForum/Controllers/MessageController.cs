@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebApiForum.Dto_s;
 using WebApiForum.Models;
@@ -7,6 +8,7 @@ namespace WebApiForum.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class MessagesController : ControllerBase
     {
         private readonly ForumDbContext _context;
@@ -18,6 +20,7 @@ namespace WebApiForum.Controllers
 
         // GET: api/Messages
         [HttpGet]
+        [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<Message>>> GetMessages()
         {
             // Chargez les messages avec les relations nécessaires
@@ -25,19 +28,27 @@ namespace WebApiForum.Controllers
                 .Include(m => m.User) // Ajoutez les includes nécessaires
                 .Include(m => m.Reponses)
                     .ThenInclude(r => r.User)
-                    .OrderByDescending(m => m.DatePublication)   
+                .Include(m => m.Reponses)
+                    .ThenInclude(r => r.Likes)
+                .OrderByDescending(m => m.DatePublication)   
                 .ToListAsync();
+            foreach (var message in messages)
+            {
+                Console.WriteLine($"Message ID: {message.Id}, Nombre de réponses: {message.Reponses.Count}");
+            }
 
             return Ok(messages);
         }
 
         // GET: api/Messages/5
         [HttpGet("{id}")]
+        [AllowAnonymous]
         public async Task<ActionResult<Message>> GetMessage(int id)
         {
             var message = await _context.Messages
                 .Include(m => m.Reponses)
                     .ThenInclude(r => r.Likes)
+                .Include(r => r.User)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
             if (message == null)
@@ -51,6 +62,8 @@ namespace WebApiForum.Controllers
         // POST: api/Messages
         // POST: api/Messages
         [HttpPost]
+        //[Authorize]
+        [AllowAnonymous]
         public async Task<ActionResult<Message>> PostMessage(CreateMessageDto dto)
         {
             if (!ModelState.IsValid)
@@ -80,6 +93,8 @@ namespace WebApiForum.Controllers
 
         // PUT: api/Messages/5
         [HttpPut("{id}")]
+        [Authorize]
+
         public async Task<IActionResult> PutMessage(int id, UpdateMessageDto dto)
         {
           
@@ -118,6 +133,7 @@ namespace WebApiForum.Controllers
 
         // DELETE: api/Messages/5
         [HttpDelete("{id}")]
+        [Authorize]
         public async Task<IActionResult> DeleteMessage(int id)
         {
             var message = await _context.Messages.FindAsync(id);
@@ -134,6 +150,7 @@ namespace WebApiForum.Controllers
 
         // GET: api/Messages/5/reponses
         [HttpGet("{id}/Reponses")]
+        [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<Reponse>>> GetMessageReponses(int id)
         {
             if (!MessageExists(id))

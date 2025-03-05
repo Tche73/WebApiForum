@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
@@ -11,6 +12,7 @@ namespace WebApiForum.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class ReponsesController : ControllerBase
     {
         private readonly ForumDbContext _context;
@@ -22,6 +24,7 @@ namespace WebApiForum.Controllers
 
         // GET: api/Reponses
         [HttpGet]
+        [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<ReponseDetailsDto>>> GetReponses()
         {
                 var reponses = await _context.Reponses
@@ -41,6 +44,7 @@ namespace WebApiForum.Controllers
 
         // GET: api/Reponses/5
         [HttpGet("{id}")]
+        [AllowAnonymous]
         public async Task<ActionResult<ReponseDetailsDto>> GetReponse(int id)
         {
             var reponse = await _context.Reponses
@@ -65,6 +69,7 @@ namespace WebApiForum.Controllers
 
         // POST: api/Reponses
         [HttpPost]
+        [AllowAnonymous]
         public async Task<ActionResult<Reponse>> PostReponse(CreateReponseDto dto)
         {
             if (!ModelState.IsValid)
@@ -168,6 +173,7 @@ namespace WebApiForum.Controllers
         //        .ToListAsync();
         //}
         // GET: api/Reponses/5/Likes
+
         [HttpGet("{id}/Likes")]
         public async Task<ActionResult<IEnumerable<Like>>> GetLikesForReponse(int id)
         {
